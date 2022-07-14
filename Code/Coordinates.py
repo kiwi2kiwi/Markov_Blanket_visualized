@@ -7,6 +7,9 @@ class Coordinate():
         self.y = y
         self.z = z
 
+    def __str__(self):
+        return "Coordinate([{0},{1},{2}])".format(self.x, self.y, self.z)
+
 def distance_finder(one,two):
     a = np.array((one.x, one.y, one.z))  # first coordinates
     b = np.array((two.x, two.y, two.z))  # second coordinates
@@ -14,3 +17,4 @@ def distance_finder(one,two):
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
+

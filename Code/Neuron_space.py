@@ -10,6 +10,8 @@ import Coordinates
 import Neuron
 import Connection
 import independent_functions
+from scipy.stats import norm
+import scipy.stats
 
 
 from mpl_toolkits.mplot3d import Axes3D
@@ -24,9 +26,33 @@ class NeuronSpace():
         self.number_of_dendrites = 4 # this is equal to the window size
         self.generate = False
         self.Visualization = Visualization
+        global size
+        self.size = size
         self.spawn_neurons_axons()
 
 
+    def start_vis(self):
+        plt.ion()
+        self.neuron_dot_dict = {}  # name: (neuron, punkt auf plot)
+        self.axon_line_dict = {}  # name: (axon, linie auf plot)
+        self.fig = plt.figure(figsize=(8, 8))
+        self.ax = self.fig.add_subplot(111, projection='3d')
+        self.ax.set_xlim(-(size / 2), size / 2)
+        self.ax.set_ylim(-(size / 2), size / 2)
+        self.ax.set_zlim(-(size / 2), size / 2)
+
+        for layer in self.layers:  # plot all neurons
+            for neuron in layer:
+                self.neuron_dot_dict[neuron.name] = [(self.ax.scatter(neuron.coordinates.x, neuron.coordinates.y, neuron.coordinates.z, c="grey",
+                                                             s=10 * neuron.signal_modification)), neuron]
+
+        for a in self.Synapse_dict.values():
+            self.axon_line_dict[a.name] = [(self.ax.plot3D([a.Axon_side.coordinates.x, a.Dendrite_side.coordinates.x],
+                                                           [a.Axon_side.coordinates.y, a.Dendrite_side.coordinates.y],
+                                                           [a.Axon_side.coordinates.z, a.Dendrite_side.coordinates.z], linewidth=1,
+                                                           c='grey')), a]
+
+        self.grown_axons = []
 
     def create_Axon(self, axon_side, dendrite_side):
         in_name_v_first = True
@@ -50,12 +76,24 @@ class NeuronSpace():
             dendrite_side.Dendrites.append(synapse)
             return synapse
 
-    def markov_blanket_of(self, neuron):
-        # Parents
-        parents = [d.Axon_side for d in neuron.Dendrites]
-        # Children
-        children = [c.Dendrite_side for c in neuron.Axons]
-        # Parents of children
+    def colour_markov_blanket(self, neuron):
+        neuron.my_markov_blanket()
+
+        (self.neuron_dot_dict[neuron.name])[0].set_color("purple")
+
+        for p in neuron.parents:  # parents are sensory states in green
+            tpl = self.neuron_dot_dict[p.name]
+            tpl[0].set_color("green")
+
+        for c in neuron.children:   # children are active states in blue
+            tpl = self.neuron_dot_dict[c.name]
+            tpl[0].set_color("blue")
+
+        for pc in neuron.parents_of_children:   # parents of children are active states in blue
+            tpl = self.neuron_dot_dict[pc.name]
+            tpl[0].set_color("blue")
+
+        print("Chosen neuron in purple\nparents are sensory states in green\nchildren are active states in blue\nparents of children are active states in blue")
 
     def draw_brain(self, active_axons):
         # visualize the neurons
@@ -83,44 +121,9 @@ class NeuronSpace():
             value[0][0].set_color("purple")
         if len(self.new_axons) > 0:
             print("grew ", len(self.new_axons), " axons")
-        self.fig.savefig('..//Bilder//temp'+str(self.ticks)+'.png', dpi=self.fig.dpi)
+#        self.fig.savefig('..//Bilder//temp'+str(self.ticks)+'.png', dpi=self.fig.dpi)
         self.grown_axons=[]
         self.new_axons = []
-
-    def start_vis(self):
-        #plt.ion()
-        self.neuron_dot_dict = {}  # name: (neuron, punkt auf plot)
-        self.axon_line_dict = {}  # name: (axon, linie auf plot)
-        self.fig = plt.figure(figsize=(8, 8))
-        self.ax = self.fig.add_subplot(111, projection='3d')
-        self.ax.set_xlim(-(size / 2), size / 2)
-        self.ax.set_ylim(-(size / 2), size / 2)
-        self.ax.set_zlim(-(size / 2), size / 2)
-        for i in self.Vset:  # plot perceptive neurons
-            self.neuron_dot_dict[i.name] = [(self.ax.scatter(i.coordinates.x, i.coordinates.y, i.coordinates.z, c="grey",
-                                                             s=10 * i.signal_modification)), i]
-        #    for c in i.connections:
-        #        ax.plot3D([c.neuron1.coordinats.x, c.neuron2.coordinats.x], [c.neuron1.coordinats.y, c.neuron2.coordinats.y], [c.neuron1.coordinats.z, c.neuron2.coordinats.z], 'b')
-
-        for i in self.Pset:  # plot processing neurons
-            self.neuron_dot_dict[i.name] = [(self.ax.scatter(i.coordinates.x, i.coordinates.y, i.coordinates.z, c="grey",
-                                                             s=10 * i.signal_modification)), i]
-        #    for c in i.connections:
-        #        ax.plot3D([c.neuron1.coordinats.x, c.neuron2.coordinats.x], [c.neuron1.coordinats.y, c.neuron2.coordinats.y], [c.neuron1.coordinats.z, c.neuron2.coordinats.z], 'b')
-
-        for i in self.Iset:  # plot interaction neurons
-            self.neuron_dot_dict[i.name] = [(self.ax.scatter(i.coordinates.x, i.coordinates.y, i.coordinates.z, c="grey",
-                                                             s=10 * i.signal_modification)), i]
-        #    for c in i.connections:
-        #        ax.plot3D([c.neuron1.coordinats.x, c.neuron2.coordinats.x], [c.neuron1.coordinats.y, c.neuron2.coordinats.y], [c.neuron1.coordinats.z, c.neuron2.coordinats.z], 'b')
-
-        for a in self.Synapse_dict.values():
-            self.axon_line_dict[a.name] = [(self.ax.plot3D([a.Axon_side.coordinates.x, a.Dendrite_side.coordinates.x],
-                                                           [a.Axon_side.coordinates.y, a.Dendrite_side.coordinates.y],
-                                                           [a.Axon_side.coordinates.z, a.Dendrite_side.coordinates.z], linewidth=1,
-                                                           c='grey')), a]
-
-        self.grown_axons = []
 
     def Hebbian(self):
 
@@ -149,7 +152,6 @@ class NeuronSpace():
                                 elif z.name in n.fire_together.keys():
                                     n.fire_together[z.name] += 3
 
-
     def run(self):
         if self.learn:
             for i in self.Pset:
@@ -175,22 +177,22 @@ class NeuronSpace():
         Layer_coordinates = []
         # choose coordinates for perceptive neurons, set V
         # these should face one plane of the neuron space
-        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 8, width = 8, plane_end=-(size/2)))
+        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 8, width = 8, plane_end=-(size/2), size = self.size))
 
 
         # choose cluster of coordinates in the middle of the neuron space for processing neurons, set P
-        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 8, width = 8, plane_end=-(size/2)+5))
-        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 4, width = 4, plane_end=-(size/2)+10))
-        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 2, width = 2, plane_end=-(size / 2) + 15))
+        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 8, width = 8, plane_end=-(size/2)+20, size = self.size))
+        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 4, width = 4, plane_end=-(size/2)+40, size = self.size))
+        Layer_coordinates.append(independent_functions.ordered_input_neurons(height = 2, width = 2, plane_end=-(size / 2) + 60, size = self.size))
 
         # choose cluster of coordinates on plane, opposite side to V, set I
         # that only connect to processing neurons
-        Layer_coordinates.append(independent_functions.ordered_output_neurons(height=10, width=1, plane_end=size/2))
+        Layer_coordinates.append(independent_functions.ordered_input_neurons(height=10, width=1, plane_end=size/2, size = self.size))
 
 
         # Neuron generation
         self.Neuron_dict = {}
-        Layers = []
+        self.layers = []
 
         for l in Layer_coordinates:
             Layer = []
@@ -198,24 +200,31 @@ class NeuronSpace():
                 new_neuron = Neuron.Neuron(n, [], [], 1, base_space = self)
                 self.Neuron_dict[new_neuron.name] = new_neuron
                 Layer.append(new_neuron)
-            Layers.append(Layer)
+            self.layers.append(Layer)
 
         # spawn a bunch of Perceptive neurons on coordinate set V
-        self.Vset = Layers[0]
+        self.Vset = self.layers[0]
         # spawn a bunch of Processing neurons on coordinate set P
-        self.Pset = Layers[1:-1]
+        self.Pset = self.layers[1:-1]
         # spawn a bunch of Interaction neurons on coordinate set I
-        self.Iset = Layers[-1]
+        self.Iset = self.layers[-1]
 
 
         self.Synapse_dict = {}
 
-        for idx, l in enumerate(Layers):
+        for idx, l in enumerate(self.layers):
             if idx != 0:
                 for n in l:
-                    chosen_neurons = independent_functions.reach_out_to_previous_layer(Layers[idx-1], n, self.number_of_dendrites)
+                    chosen_neurons = independent_functions.reach_out_to_previous_layer(self.layers[idx-1], n, self.number_of_dendrites)
                     for chosen_neuron in chosen_neurons:
                         self.create_Axon(chosen_neuron, n)
+
+        # build the markov blanket for every neuron:
+        for l in self.layers:
+            for n in l:
+                n.my_markov_blanket()
+#                n.Prior = norm.beta(1, 1) # Initialized without any prior beliefs
+                # Every neuron only has one axon so this only gets one prior to send through the axon
 
         self.grown_axons = []
         self.new_axons = []
@@ -318,7 +327,8 @@ class NeuronSpace():
         print("Bild generiert")
 
 
-neuronspace = NeuronSpace(Visualization = False)
+neuronspace = NeuronSpace(Visualization = True)
+neuronspace.colour_markov_blanket((neuronspace.layers[1])[28])
 from sklearn import datasets
 from sklearn import preprocessing
 import pandas as pd

@@ -5,7 +5,6 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import Coordinates
-import Perceptive_neuron, Processing_neuron, Interaction_neuron
 import Connection
 
 
@@ -38,8 +37,7 @@ def new_positions_circular_coordinates(self):
     return (x, y)
 
 
-def ordered_input_neurons(self, height, width, plane_end):
-    global size
+def ordered_input_neurons(height, width, plane_end, size):
     V = []
     area = size - 20
     y_distance = area / height
@@ -47,7 +45,11 @@ def ordered_input_neurons(self, height, width, plane_end):
     Y = np.arange(-(size / 2) + 10, (size / 2) - 10, y_distance)
     Z = np.arange(-(size / 2) + 10, (size / 2) - 10, z_distance)
     for y in Y:
+        if height == 1:
+            y = 0
         for z in Z:
+            if width == 1:
+                z = 0
             V.append(Coordinates.Coordinate(plane_end, y, z))
     return V
 
@@ -65,27 +67,36 @@ def ordered_output_neurons(self, height, width, plane_end):
             V.append(Coordinates.Coordinate(plane_end, y, 0))
     return V
 
-def reach_out_to_previous_layer(self, layer, neuron, connection_number):
+def reach_out_to_previous_layer(layer, neuron, connection_number):
     available_neurons = {}
     for n in layer:
         available_neurons[Coordinates.distance_finder(neuron.coordinates, n.coordinates)] = n
     srtd = sorted(available_neurons.items())
     return [i[1] for i in srtd[:connection_number]]
 
-def find_x_nearest(self, Neuron, setB, connection_limit=8, x=5): # finds x nearest Neurons of setB to Neuron
-    distdict={}
-    for i in setB:
-        if i != Neuron and len(i.connections) < connection_limit and sum([(type(c.other_side(i)) == Perceptive_neuron.PerceptiveNeuron or type(c.other_side(i)) == Interaction_neuron.InteractionNeuron) for c in i.connections]) == 0:
-            # check if neuron is perceptive and if i already connected to perceptive
-            # this should ensure that one perceptive neuron does not connect to a processing neuron thats already connected to a perceptive neuron
-            if type(Neuron) == Perceptive_neuron.PerceptiveNeuron:
-                perceptive_connections = [(type(connections_of_i.other_side(connections_of_i)) == Perceptive_neuron.PerceptiveNeuron) for connections_of_i in i.connections]
-                if sum(perceptive_connections) == 0:
-                    distdict[Coordinates.distance_finder(Neuron.coordinates, i.coordinates)] = i
-                # Debug output
-#                else:
-#                    print("prevented perceptives connecting to same neuron")
-            else:
-                distdict[Coordinates.distance_finder(Neuron.coordinates, i.coordinates)] = i
-    srtd = sorted(distdict.items())
-    return [i[1] for i in srtd[:x]]
+
+'''
+combine two distributions in matlab:
+
+sigma_p = 1;
+v_p = 3;
+sigma_u = 1;
+u = 2;
+MINV = 0.01;
+DV = 0.01;
+MAXV = 5;
+vrange = [MINV:DV:MAXV];
+numerator = normpdf(vrange,v_p,sigma_p) .* normpdf (u,vrange.^2,sigma_u);
+normalization = sum(numerator*DV);
+p = numerator/normalization;
+plot(vrange,normpdf(vrange,v_p,sigma_p),'k');
+figure()
+plot(vrange,normpdf(u,vrange.^2,sigma_u),'k');
+figure()
+plot(vrange,p,'k');
+xlabel("v");
+ylabel("p(v|u)");
+
+
+'''
+

@@ -1,47 +1,31 @@
 import random
 import numpy as np
 import Coordinates
-import Processing_neuron
+import math
+
 
 class Connection():
     # simulates the axon and its synapse
     def __init__(self, Axon_side, Dendrite_side, name, size, base_space, threshold = 0.65):
         super(Connection, self).__init__()
-        self.cooldown = 30 # when signal successfully gets transmitted, how long does it take before the axon is ready again
-        self.learning_time = 300 # if axon gets used 3 times during this learning time, the axon threshold gets lower, decay is lowered
         self.base_space = base_space
-        self.first_signal = -600
-        self.second_signal = -600
-        self.third_signal = -600
+
         self.Axon_side = Axon_side
         self.Dendrite_side = Dendrite_side
-        self.threshold = threshold
-        self.last_signal = -40
         self.name = name
-#        print("length of axon: ", self.delay)
-        self.time_when_activated = 0
-        self.active = False
 
-    def receive_signal(self, sourceNeuron, signal):
-        if self.cooldown < (self.base_space.ticks - self.last_signal):
-            if self.threshold < signal:
-                self.active = True
-                self.time_when_activated = self.base_space.ticks
-                self.base_space.active_axons[self.name] = self
-                self.sourceNeuron = sourceNeuron
+        self.weight=1
 
-    def step(self):
-        if self.time_when_activated == self.base_space.ticks - self.delay:
-            self.Axon_side.activation(self.Dendrite_side, 1)
-            self.third_signal = self.second_signal
-            self.second_signal = self.first_signal
-            self.first_signal = self.base_space.ticks
-            self.last_signal = self.base_space.ticks
-            if self.base_space.learn:
-                if self.first_signal - self.third_signal < self.learning_time:
-                    self.strengthen()
-            self.active = False
-            self.base_space.active_axons.pop(self.name)
+    def receive_signal(self, distribution):
+        rest = self.weight%1
+        draws = math.floor(self.weight)
+        if rest != 0:
+            samples = distribution.rvs(draws + 1)
+            samples[-1] = samples[-1]*rest
+        else:
+            samples = distribution.rvs(draws)
+        self.Axon_side.activation(self.Dendrite_side, samples)
+
 
     def strengthen(self):
         self.threshold = self.threshold * 0.95
